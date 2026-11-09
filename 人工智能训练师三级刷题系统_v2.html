@@ -1375,10 +1375,17 @@ function bindEvents(){}
 const _pwh=['03591fbf6fa9ff1d6ddff3ffbffc8766de8d55986d5ca9cb4edf239d06acd5b1','428e8c54ed3dc66b54a19230724031e6dd46b195982d0efe898c9a41debd3d43'];
 const _intHash='efebc393ae043c00e6f767c2ba6ca5635ef7dd802b91ad2aedb589acebd9b426';
 
+// SHA-256：优先使用 WebCrypto(安全上下文: https / localhost / file://)。
+// 若 crypto.subtle 不可用(如 http://局域网IP)，返回 null；调用方据此跳过校验。
 async function _sha256(str){
-  const buf=new TextEncoder().encode(str);
-  const hash=await crypto.subtle.digest('SHA-256',buf);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if(typeof crypto!=='undefined'&&crypto&&crypto.subtle){
+    try{
+      const buf=new TextEncoder().encode(str);
+      const hash=await crypto.subtle.digest('SHA-256',buf);
+      return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }catch(e){/* 落入不可用路径 */}
+  }
+  return null;
 }
 
 async function _checkIntegrity(){
@@ -1391,18 +1398,24 @@ async function _checkIntegrity(){
   while(depth>0&&pos<src.length){if(src[pos]==='(')depth++;else if(src[pos]===')')depth--;pos++;}
   const dStr=src.substring(i1,pos-1);
   const hash=await _sha256(dStr);
+  // 无 crypto.subtle(如 http://局域网IP) 时无法校验，直接放行，避免白屏
+  if(hash===null)return true;
   return hash===_intHash;
 }
 
 async function _verifyPassword(pwd){
   const h=await _sha256(pwd);
+  if(h===null)return false;
   return _pwh.includes(h);
 }
 
 let _unlocked=false;
 
 async function _guardedInit(){
-  const ok=await _checkIntegrity();
+  let ok=false;
+  try{
+    ok=await _checkIntegrity();
+  }catch(e){console.warn('integrity check error:',e);}
   if(ok){_unlocked=true;await bootSync();render();return;}
   // Tampered — show password prompt
   const app=document.getElementById('app');
