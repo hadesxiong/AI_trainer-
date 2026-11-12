@@ -122,6 +122,46 @@ The folder `人工智能训练师三级素材/操作题答案/` contains referen
 | 4.1.x（5题） | 培训大纲编写 | 学习目标填空答案 |
 | 4.2.x（5题） | 数据采集处理方案 | 填空答案 + 方案设计 |
 
+## 本 Fork 更新说明 / Fork Updates
+
+本 Fork 在上游（xxiao1127/AI_trainer-）基础上补充了以下内容，**上游原有文件与目录结构未做任何改动**。
+
+This fork adds the following on top of the upstream repository (xxiao1127/AI_trainer-). **All original upstream files and directory structure remain untouched.**
+
+### 新增内容 / What's New
+
+| 新增内容 | 说明 | Description |
+|----------|------|-------------|
+| `*_answer.ipynb`（20 个） | 1.1.x / 2.1.x / 2.2.x / 3.2.x 各 5 题的**答题 ipynb**，基于原始题目文档（试题单 + 评分表 M1~Mn）逐项核对填写 | Answered notebooks for the 20 coding tasks (5 each of 1.1.x / 2.1.x / 2.2.x / 3.2.x), filled and verified item-by-item against the original exam papers and scoring rubrics |
+| `实操考前冲刺行动指南.md` | 考前 1 小时冲刺指南：全局考场铁律 + 8 大题型区间（概要 / 答题要点 / 产出自检） | A pre-exam sprint guide: global exam rules + 8 task-type sections (overview / key points / deliverable checklist) |
+| `extract_mock_exam.py` | 模拟操作测试抽题脚本，按考试抽题规则随机组卷并生成 `考题.md` | Mock-exam extractor: randomly draws one question per exam rule and generates a `考题.md` question sheet |
+| `mock_exam/` | 抽题脚本的输出目录（每次运行生成一个带时间戳的会话文件夹），已被 `.gitignore` 忽略 | Output folder of the extractor (one timestamped session folder per run); ignored via `.gitignore` |
+
+### 目录速览 / Repository Layout
+
+```
+AI_trainer-/
+├── 人工智能训练师三级题库/        # 原始题库（理论 + 操作技能原题文档）
+├── 人工智能训练师三级素材/        # 操作技能素材（上网素材 + 参考答案）
+│   └── 人工智能训练师三级上网素材/  #   40 个题目文件夹（含 *_answer.ipynb）
+├── mock_exam/                    # 模拟考产物（git 忽略）
+├── extract_mock_exam.py          # 模拟考抽题脚本
+├── 实操考前冲刺行动指南.md        # 考前冲刺指南
+└── （根目录其余文件为上游原有内容）
+```
+
+### 模拟考抽题脚本用法 / Mock-Exam Extractor Usage
+
+```bash
+python extract_mock_exam.py              # 随机抽一套模拟题
+python extract_mock_exam.py --seed 42    # 固定随机种子，复现同一套题
+python extract_mock_exam.py --keep-docx  # 额外保留 doc/docx 答题卷（默认排除）
+```
+
+抽题规则与真实考试一致：题目1（1.1.x + 1.2.x 抽 1）、题目2~5（2.1.x / 2.2.x / 3.1.x / 3.2.x 各抽 1）、题目6（4.1.x + 4.2.x 抽 1），共 6 题；排除 `*_answer.ipynb` 与 doc/docx，其余文件保留原目录结构。
+
+The draw mirrors the real exam: 6 questions total — one from (1.1.x + 1.2.x), one each from 2.1.x / 2.2.x / 3.1.x / 3.2.x, and one from (4.1.x + 4.2.x). `*_answer.ipynb` and doc/docx files are excluded; all other files keep their original structure.
+
 ## 贡献与致谢 / Contributors and Acknowledgements
 
 感谢所有为本项目提供帮助的人。GitHub 的 Contributors 页面会根据提交作者账号和邮箱自动统计；OpenAI Codex 作为 AI 协作助手没有独立的 GitHub 账号，因此不会出现在自动统计列表中，但它参与了本项目的代码审查、错题本修复、PR 处理和 README 中英双语整理。
