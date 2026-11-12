@@ -1,5 +1,8 @@
-.neverload/
+﻿.neverload/
 .claude/
 ai_2025/
 ai3_sync.db
 server.log
+mock_exam/
+.vscode/
+
