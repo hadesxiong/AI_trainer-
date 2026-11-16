@@ -5,4 +5,4 @@ ai3_sync.db
 server.log
 mock_exam/
 .vscode/
-
+.DS_Store
