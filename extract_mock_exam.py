@@ -4,17 +4,21 @@
 
 功能：
   1. 在 mock_exam/ 下创建会话文件夹：YYYY_MM_DD_HHMMSS_<uuid8>
-  2. 按考试抽题规则从素材中随机抽取 6 题，复制素材文件（保留原目录结构），
-     排除 *_answer.ipynb、*.doc、*.docx
-  3. 在会话文件夹内生成"考题.md"（题目序号 + 题号 + 试题名称 + 抽中文件清单）
+  2. 按考试抽题规则从素材中随机抽取题目，复制素材文件（保留原目录结构），
+     排除 *_answer.ipynb、*.doc、*.docx 与 *.md
+  3. 抽取“平台模拟界面”文件夹下对应的 html 文件放入会话目录
+  4. 在会话文件夹内生成"考题.md"（题目序号 + 题号 + 试题名称 + 抽中文件清单）
 
 用法：
-  python extract_mock_exam.py            # 随机抽题
+  python extract_mock_exam.py            # 随机抽 6 题
   python extract_mock_exam.py --seed 42  # 固定随机种子（复盘同一套题）
   python extract_mock_exam.py --keep-docx  # 额外保留 doc/docx 答题卷（默认排除）
+  python extract_mock_exam.py --group 1.1  # 仅抽取 1.1.x 分组中的一题（支持省略末尾的点）
+  python extract_mock_exam.py --group 1.1. --seed 7  # 指定分组并固定随机种子
 """
 
 import argparse
+import re
 import shutil
 import time
 import uuid
@@ -22,6 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SRC_DIR = ROOT / "人工智能训练师三级素材" / "人工智能训练师三级上网素材"
+MOCK_UI_DIR = ROOT / "人工智能训练师三级素材" / "人工智能训练师三级考试平台模拟界面"
 MOCK_DIR = ROOT / "mock_exam"
 
 # 题目1：1.1.x 全部 + 1.2.x 全部（共 10 题，与"总共10题"一致）
@@ -41,6 +46,23 @@ POOLS = [
     ("题目5", POOL_5),
     ("题目6", POOL_6),
 ]
+
+GROUP_ALIASES = {
+    "1.1": "1.1.",
+    "1.1.": "1.1.",
+    "2.1": "2.1.",
+    "2.1.": "2.1.",
+    "2.2": "2.2.",
+    "2.2.": "2.2.",
+    "3.1": "3.1.",
+    "3.1.": "3.1.",
+    "3.2": "3.2.",
+    "3.2.": "3.2.",
+    "4.1": "4.1.",
+    "4.1.": "4.1.",
+    "4.2": "4.2.",
+    "4.2.": "4.2.",
+}
 
 # 40 题试题名称（源自《第4部分_人工智能训练师_3级_操作技能复习题》）
 TITLES = {
@@ -88,11 +110,13 @@ TITLES = {
 
 
 def is_excluded(name: str) -> bool:
-    """排除 _answer.ipynb 与 doc/docx（大小写不敏感）"""
+    """排除 _answer.ipynb、doc/docx 与 md（大小写不敏感）"""
     lower = name.lower()
     if lower.endswith("_answer.ipynb"):
         return True
     if lower.endswith((".doc", ".docx")):
+        return True
+    if lower.endswith(".md"):
         return True
     return False
 
@@ -100,7 +124,7 @@ def is_excluded(name: str) -> bool:
 def make_ignore(keep_docx: bool):
     def _ignore(_dir: str, files: list[str]) -> list[str]:
         if keep_docx:
-            return [f for f in files if f.lower().endswith("_answer.ipynb")]
+            return [f for f in files if f.lower().endswith("_answer.ipynb") or f.lower().endswith(".md")]
         return [f for f in files if is_excluded(f)]
     return _ignore
 
@@ -117,6 +141,18 @@ def copy_question(qid: str, dst_root: Path, keep_docx: bool) -> list[str]:
         str(p.relative_to(dst_root)) for p in dst.rglob("*") if p.is_file()
     )
     return copied
+
+
+def copy_mock_ui(qid: str, dst_root: Path) -> str | None:
+    """复制平台模拟界面 html 到会话目录下的 platform_ui/ 子目录，返回相对路径，不存在则返回 None"""
+    src_html = MOCK_UI_DIR / f"{qid}.html"
+    if not src_html.is_file():
+        return None
+    dst_dir = dst_root / "platform_ui"
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    dst_html = dst_dir / f"{qid}.html"
+    shutil.copy2(src_html, dst_html)
+    return str(dst_html.relative_to(dst_root))
 
 
 def build_exam_md(records: list[dict], session_name: str, timestamp: str) -> str:
@@ -149,6 +185,18 @@ def build_exam_md(records: list[dict], session_name: str, timestamp: str) -> str
     return "\n".join(lines)
 
 
+def parse_group(value: str) -> str:
+    """解析 --group 参数，支持 '1.1'、'1.1.'、'1.1.x' 等，统一返回 '1.1.' 前缀"""
+    v = value.strip()
+    # 允许省略最后的点，或带 x 后缀
+    if v in GROUP_ALIASES:
+        return GROUP_ALIASES[v]
+    m = re.match(r"^(\d+\.\d+)\.?x?$", v)
+    if m:
+        return m.group(1) + "."
+    raise SystemExit(f"不支持的 --group 值: {value!r}，示例：1.1、1.1.、2.1、3.2.x")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="模拟操作测试抽题脚本")
     parser.add_argument("--seed", type=int, default=None, help="随机种子（复现同一套题）")
@@ -156,6 +204,12 @@ def main() -> None:
         "--keep-docx",
         action="store_true",
         help="额外保留 doc/docx 文件（默认排除）",
+    )
+    parser.add_argument(
+        "--group",
+        type=parse_group,
+        default=None,
+        help="仅抽取指定分组中的一题（如 1.1、1.1.、2.1、3.2.x），省略时按常规规则抽 6 题",
     )
     args = parser.parse_args()
 
@@ -173,10 +227,30 @@ def main() -> None:
     session_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for label, pool in POOLS:
+    if args.group is not None:
+        # 仅抽取指定分组中的一题
+        prefix = args.group
+        pool = [qid for _, p in POOLS for qid in p if qid.startswith(prefix)]
+        if not pool:
+            raise SystemExit(f"分组 {prefix!r} 下没有可抽取的题目")
         qid = random.choice(pool)
+        # 定位该题目所属的 label
+        label = next((lbl for lbl, p in POOLS if qid in p), f"题目({prefix})")
         files = copy_question(qid, session_dir, keep_docx=args.keep_docx)
+        ui_file = copy_mock_ui(qid, session_dir)
+        if ui_file:
+            files.append(ui_file)
+            files.sort()
         records.append({"label": label, "qid": qid, "files": files})
+    else:
+        for label, pool in POOLS:
+            qid = random.choice(pool)
+            files = copy_question(qid, session_dir, keep_docx=args.keep_docx)
+            ui_file = copy_mock_ui(qid, session_dir)
+            if ui_file:
+                files.append(ui_file)
+                files.sort()
+            records.append({"label": label, "qid": qid, "files": files})
 
     md_path = session_dir / "考题.md"
     md_path.write_text(

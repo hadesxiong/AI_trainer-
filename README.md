@@ -153,14 +153,16 @@ AI_trainer-/
 ### 模拟考抽题脚本用法 / Mock-Exam Extractor Usage
 
 ```bash
-python extract_mock_exam.py              # 随机抽一套模拟题
+python extract_mock_exam.py              # 随机抽一套模拟题（6 题）
 python extract_mock_exam.py --seed 42    # 固定随机种子，复现同一套题
 python extract_mock_exam.py --keep-docx  # 额外保留 doc/docx 答题卷（默认排除）
+python extract_mock_exam.py --group 1.1  # 仅抽取 1.1.x 分组中的一题（支持省略末尾的点，如 1.1.）
+python extract_mock_exam.py --group 3.2.x --seed 7  # 指定分组并固定随机种子
 ```
 
-抽题规则与真实考试一致：题目1（1.1.x + 1.2.x 抽 1）、题目2~5（2.1.x / 2.2.x / 3.1.x / 3.2.x 各抽 1）、题目6（4.1.x + 4.2.x 抽 1），共 6 题；排除 `*_answer.ipynb` 与 doc/docx，其余文件保留原目录结构。
+抽题规则与真实考试一致：题目1（1.1.x + 1.2.x 抽 1）、题目2~5（2.1.x / 2.2.x / 3.1.x / 3.2.x 各抽 1）、题目6（4.1.x + 4.2.x 抽 1），共 6 题；排除 `*_answer.ipynb`、doc/docx 与 md 文件，其余文件保留原目录结构，并额外抽取“平台模拟界面”文件夹下对应的 html 文件放入会话目录的 `platform_ui/` 子目录。使用 `--group` 时仅抽取指定分组中的 1 题，并生成仅含该题的 `考题.md`。
 
-The draw mirrors the real exam: 6 questions total — one from (1.1.x + 1.2.x), one each from 2.1.x / 2.2.x / 3.1.x / 3.2.x, and one from (4.1.x + 4.2.x). `*_answer.ipynb` and doc/docx files are excluded; all other files keep their original structure.
+The draw mirrors the real exam: 6 questions total — one from (1.1.x + 1.2.x), one each from 2.1.x / 2.2.x / 3.1.x / 3.2.x, and one from (4.1.x + 4.2.x). `*_answer.ipynb`, doc/docx, and md files are excluded; all other files keep their original structure, and the corresponding HTML from the “platform mock interface” folder is copied into the session’s `platform_ui/` subdirectory. With `--group`, only 1 question from the given group prefix (e.g. `1.1`, `1.1.`, `3.2.x`) is drawn, and a `考题.md` containing only that question is generated.
 
 ## 贡献与致谢 / Contributors and Acknowledgements
 

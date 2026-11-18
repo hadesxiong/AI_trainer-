@@ -1,8 +1,3 @@
-﻿.neverload/
-.claude/
-ai_2025/
-ai3_sync.db
-server.log
+﻿__pycache__/
+*.py[cod]
 mock_exam/
-.vscode/
-.DS_Store
